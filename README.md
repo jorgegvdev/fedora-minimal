@@ -9,7 +9,7 @@ Sirve en cualquier equipo y con cualquier escritorio (KDE, GNOME, XFCE…), porq
 En una instalación limpia de Fedora (no necesita `git`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<tu-usuario>/fedora-minimal/main/fedora-postinstall.sh -o fedora-postinstall.sh
+curl -fsSL https://raw.githubusercontent.com/jorgegvdev/fedora-minimal/main/fedora-postinstall.sh -o fedora-postinstall.sh
 bash fedora-postinstall.sh
 ```
 
