@@ -15,7 +15,7 @@ bash fedora-postinstall.sh
 
 - Ejecútalo como usuario normal, **no** con `sudo`. Pide tu contraseña una vez.
 - Es seguro volver a ejecutarlo.
-- Crea una carpeta `logs/` junto al script con dos archivos por ejecución: `postinstall-<fecha>.log` (todo) y `errores-<fecha>.log` (solo errores y avisos; si no hubo ninguno, no se deja).
+- Crea una carpeta `logs/` junto al script con dos archivos por ejecución: `postinstall-<fecha>.log` (todo) y `errores-<fecha>.log` (solo comandos que fallaron y avisos, con el paso y el código de salida; si no hubo ninguno, no se deja).
 - Al terminar, reinicia: `sudo reboot`.
 
 > Lee el script antes de ejecutarlo; son ~120 líneas.
