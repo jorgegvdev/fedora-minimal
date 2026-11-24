@@ -1,6 +1,6 @@
 # fedora-minimal
 
-Post-instalación **mínima** para Fedora Workstation. Deja el sistema funcional, actualizado y estable, y nada más: el escritorio, las apps y los ajustes los configuras tú después.
+Post-instalación para Fedora Workstation: base estable (DNF, RPM Fusion, Flathub, códecs, snapshots, firmware) más herramientas de uso diario (CLI, desarrollo, juegos, navegadores, apps). Cada bloque se apaga con un interruptor. El escritorio y sus ajustes los configuras tú.
 
 Sirve en cualquier equipo y con cualquier escritorio (KDE, GNOME, XFCE…), porque detecta el hardware en vez de asumirlo.
 
@@ -15,10 +15,11 @@ bash fedora-postinstall.sh
 
 - Ejecútalo como usuario normal, **no** con `sudo`. Pide tu contraseña una vez.
 - Es seguro volver a ejecutarlo.
+- Es interactivo en el bloque de desarrollo: pregunta nombre/email de git si faltan, crea la clave SSH (pide passphrase) y abre el login de GitHub en el navegador.
 - Crea una carpeta `logs/` junto al script con dos archivos por ejecución: `postinstall-<fecha>.log` (todo) y `errores-<fecha>.log` (solo comandos que fallaron y avisos, con el paso y el código de salida; si no hubo ninguno, no se deja).
 - Al terminar, reinicia: `sudo reboot`.
 
-> Lee el script antes de ejecutarlo; son ~120 líneas.
+> Lee el script antes de ejecutarlo.
 
 ## Qué hace
 
@@ -30,24 +31,31 @@ bash fedora-postinstall.sh
    - AMD → drivers `freeworld` de Mesa
 5. Si `/` es **Btrfs**, configura **snapper** (snapshots con límites conservadores) para poder volver atrás si una actualización rompe algo.
 6. Actualiza el **firmware** (BIOS, EC, SSD…) vía fwupd/LVFS.
-7. Activa `fstrim.timer`.
+7. **CLI** (`DO_CLI`): btop, htop, fastfetch, ncdu, ripgrep, fd, fzf, bat, eza, zoxide, jq, curl, wget, unzip, 7zip, rsync, tree; **ghostty** y **starship** (COPR) con `starship init` en `~/.bashrc`.
+8. **Desarrollo** (`DO_DEV`): git, gh, `development-tools`, nvm + Node LTS, pnpm y Claude Code globales, clave SSH ed25519 subida a GitHub con `gh`.
+9. **Juegos** (`DO_GAMING`): Steam, GameMode y MangoHud nativos.
+10. **Navegadores** (`DO_BROWSERS`): Firefox, Chrome, Brave y Vivaldi desde sus repos oficiales.
+11. **Apps** (`DO_APPS`): LibreOffice (dnf); Flatpak: Zen, Zed, VSCodium, PhpStorm, DataGrip, WebStorm, IntelliJ IDEA, Spotify, Discord, VLC, Bitwarden, Obsidian, Bruno, Flatseal.
+12. **Fuentes e iconos** (`DO_FONTS`): Nerd Fonts (Cascadia Code, Cascadia Mono, JetBrains Mono, Fira Code) y Outfit en `~/.local/share/fonts`; paquete `papirus-icon-theme` (elegir el tema lo haces tú en tu escritorio).
+13. Activa `fstrim.timer`.
 
-Interruptores al inicio del script: `DO_SNAPSHOTS` y `DO_FIRMWARE`.
+Interruptores al inicio del script: `DO_SNAPSHOTS`, `DO_FIRMWARE`, `DO_CLI`, `DO_DEV`, `DO_GAMING`, `DO_BROWSERS`, `DO_APPS`, `DO_FONTS`.
 
 ## Qué NO hace (a propósito)
 
 - No toca el escritorio: sin extensiones, temas ni ajustes.
-- No instala apps (navegador, ofimática, juegos, herramientas de desarrollo…).
+- No instala contenedores (Docker/Podman) ni servidores de base de datos.
 - No instala el driver propietario de NVIDIA. Ver [docs/nvidia.md](docs/nvidia.md).
 - No ejecuta `dnf autoremove`, que puede borrar drivers marcados como dependencia.
 
 ## Después del script
 
-- [docs/despues-del-script.md](docs/despues-del-script.md) — programación y juegos ligeros, comandos sueltos para copiar cuando los quieras.
+- [docs/despues-del-script.md](docs/despues-del-script.md) — configurar Steam, mantenimiento semanal y extras opcionales (Docker).
 - [docs/nvidia.md](docs/nvidia.md) — solo si el equipo tiene GPU NVIDIA.
 
 ## Limitaciones
 
 - Solo Fedora con `dnf` (Workstation, KDE, XFCE…). **No** sirve en Fedora Atomic (Silverblue, Kinoite, Bazzite), que usa `rpm-ostree`.
-- Probado en Fedora 45 con GPU Intel. Las ramas de AMD no se han ejecutado.
+- Probado en Fedora 45 con GPU Intel. Las ramas de AMD y los bloques de CLI, desarrollo, juegos, navegadores y apps no se han ejecutado todavía.
+- ghostty y starship dependen de repos COPR de terceros: pueden no tener build para tu versión de Fedora.
 - Los nombres de paquetes pueden cambiar entre versiones de Fedora. El script no se detiene por un fallo puntual; revisa el log.

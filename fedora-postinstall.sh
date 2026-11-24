@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  Post-instalación Fedora — mínima y no intrusiva
-#  Solo lo necesario para un sistema fácil y estable. No toca el
-#  escritorio, extensiones, temas ni ajustes de usuario.
+#  Post-instalación Fedora — base estable + herramientas de uso diario
+#  Base (DNF, RPM Fusion, Flathub, códecs, snapshots, firmware) y bloques
+#  opcionales (CLI, desarrollo, juegos, navegadores, apps). No toca el
+#  escritorio, extensiones ni temas.
 #  Funciona con cualquier escritorio (KDE, GNOME, XFCE...).
 #
 #  Ejecutar como usuario normal (NO con sudo):  bash fedora-postinstall.sh
@@ -13,6 +14,15 @@ set -uo pipefail
 # ---------- Interruptores: "yes" / "no" ----------
 DO_SNAPSHOTS="yes"   # Snapper (solo si / es Btrfs): volver atrás si una actualización rompe algo
 DO_FIRMWARE="yes"    # Actualizaciones de firmware/BIOS vía fwupd (LVFS)
+DO_CLI="yes"         # Utilidades de terminal, ghostty y starship
+DO_DEV="yes"         # git, herramientas de compilación, nvm + Node LTS, clave SSH y GitHub
+DO_GAMING="yes"      # Steam, GameMode y MangoHud (nativos)
+DO_BROWSERS="yes"    # Firefox, Chrome, Brave y Vivaldi (repos oficiales)
+DO_APPS="yes"        # LibreOffice (dnf) + IDEs y apps de usuario (Flatpak)
+DO_FONTS="yes"       # Fuentes (Nerd Fonts, Outfit) y paquete de iconos Papirus
+
+NVM_VERSION="v0.41.0"   # https://github.com/nvm-sh/nvm/releases
+NERD_FONTS_VERSION="v3.5.1"   # https://github.com/ryanoasis/nerd-fonts/releases
 
 # ---------- Logs: carpeta logs/ junto al script, un par de archivos por ejecución ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -147,7 +157,152 @@ if [[ $DO_FIRMWARE == yes ]]; then
 fi
 
 # ---------------------------------------------------------------------
-step "8. Mantenimiento"
+if [[ $DO_CLI == yes ]]; then
+  step "8. Utilidades CLI"
+  $DNF btop htop fastfetch ncdu ripgrep fd-find fzf bat eza zoxide \
+    jq curl wget unzip 7zip rsync tree
+  # ghostty y starship no están en los repos de Fedora: COPR
+  if ! command -v ghostty &>/dev/null; then
+    run sudo dnf copr enable -y scottames/ghostty && $DNF ghostty
+  fi
+  if ! command -v starship &>/dev/null; then
+    run sudo dnf copr enable -y atim/starship && $DNF starship
+  fi
+  if command -v starship &>/dev/null && ! grep -q 'starship init bash' ~/.bashrc 2>/dev/null; then
+    echo 'eval "$(starship init bash)"' >> ~/.bashrc
+  fi
+fi
+
+# ---------------------------------------------------------------------
+if [[ $DO_DEV == yes ]]; then
+  step "9. Desarrollo"
+  $DNF git gh
+  run sudo dnf group install -y development-tools
+
+  # Identidad de git: solo se pregunta si falta
+  if [[ -t 0 ]]; then
+    if [[ -z "$(git config --global user.name)" ]]; then
+      read -rp "Nombre para git: " GIT_NAME </dev/tty
+      [[ -n $GIT_NAME ]] && git config --global user.name "$GIT_NAME"
+    fi
+    if [[ -z "$(git config --global user.email)" ]]; then
+      read -rp "Email para git: " GIT_EMAIL </dev/tty
+      [[ -n $GIT_EMAIL ]] && git config --global user.email "$GIT_EMAIL"
+    fi
+  else
+    warn "Sin terminal interactiva: omito la identidad de git."
+  fi
+  git config --global init.defaultBranch main
+
+  # nvm + Node LTS (nvm.sh no es compatible con 'set -u')
+  export NVM_DIR="$HOME/.nvm"
+  if [[ ! -s $NVM_DIR/nvm.sh ]]; then
+    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash \
+      || warn "No se pudo instalar nvm."
+  fi
+  if [[ -s $NVM_DIR/nvm.sh ]]; then
+    set +u +o pipefail
+    # shellcheck disable=SC1091
+    . "$NVM_DIR/nvm.sh"
+    run nvm install --lts
+    run nvm alias default 'lts/*'
+    run npm install -g pnpm @anthropic-ai/claude-code
+    set -u -o pipefail
+  fi
+
+  # Clave SSH y alta en GitHub
+  SSH_KEY="$HOME/.ssh/id_ed25519"
+  if [[ ! -f $SSH_KEY ]]; then
+    if [[ -t 0 ]]; then
+      mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+      run ssh-keygen -t ed25519 -C "$(git config --global user.email)" -f "$SSH_KEY" </dev/tty
+    else
+      warn "Sin terminal interactiva: omito la clave SSH."
+    fi
+  fi
+  if [[ -f $SSH_KEY.pub && -t 0 ]]; then
+    gh auth status &>/dev/null \
+      || run gh auth login --hostname github.com --git-protocol ssh --web -s admin:public_key </dev/tty
+    if gh auth status &>/dev/null; then
+      if ! gh api user/keys --jq '.[].key' | grep -qF "$(awk '{print $2}' "$SSH_KEY.pub")"; then
+        run gh ssh-key add "$SSH_KEY.pub" --title "${HOSTNAME}-$(date +%F)"
+      fi
+    fi
+  fi
+fi
+
+# ---------------------------------------------------------------------
+if [[ $DO_GAMING == yes ]]; then
+  step "10. Juegos (Steam, GameMode, MangoHud)"
+  $DNF steam gamemode mangohud
+  run sudo usermod -aG gamemode "$USER"
+fi
+
+# ---------------------------------------------------------------------
+if [[ $DO_BROWSERS == yes ]]; then
+  step "11. Navegadores"
+  $DNF firefox
+
+  # Google Chrome (en Workstation el repo puede existir ya, deshabilitado)
+  if [[ ! -f /etc/yum.repos.d/google-chrome.repo ]]; then
+    printf '%s\n' '[google-chrome]' 'name=google-chrome' \
+      'baseurl=https://dl.google.com/linux/chrome/rpm/stable/x86_64' \
+      'enabled=1' 'gpgcheck=1' 'gpgkey=https://dl.google.com/linux/linux_signing_key.pub' \
+      | sudo tee /etc/yum.repos.d/google-chrome.repo >/dev/null
+  fi
+  run sudo dnf config-manager setopt google-chrome.enabled=1
+  $DNF google-chrome-stable
+
+  # Brave
+  [[ -f /etc/yum.repos.d/brave-browser.repo ]] \
+    || run sudo dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+  $DNF brave-browser
+
+  # Vivaldi
+  [[ -f /etc/yum.repos.d/vivaldi-fedora.repo ]] \
+    || run sudo dnf config-manager addrepo --from-repofile=https://repo.vivaldi.com/archive/vivaldi-fedora.repo
+  $DNF vivaldi-stable
+fi
+
+# ---------------------------------------------------------------------
+if [[ $DO_APPS == yes ]]; then
+  step "12. Apps de usuario"
+  $DNF libreoffice-writer libreoffice-calc libreoffice-impress
+  run sudo flatpak install -y --noninteractive flathub \
+    app.zen_browser.zen \
+    dev.zed.Zed com.vscodium.codium \
+    com.jetbrains.PhpStorm com.jetbrains.DataGrip com.jetbrains.WebStorm \
+    com.jetbrains.IntelliJ-IDEA-Ultimate \
+    com.spotify.Client com.discordapp.Discord org.videolan.VLC \
+    com.bitwarden.desktop md.obsidian.Obsidian com.usebruno.Bruno \
+    com.github.tchx84.Flatseal
+fi
+
+# ---------------------------------------------------------------------
+if [[ $DO_FONTS == yes ]]; then
+  step "13. Fuentes e iconos"
+  FONT_DIR="$HOME/.local/share/fonts"
+  mkdir -p "$FONT_DIR/NerdFonts" "$FONT_DIR/Outfit"
+  for font in CascadiaCode CascadiaMono JetBrainsMono FiraCode; do
+    if [[ -z "$(ls -A "$FONT_DIR/NerdFonts/$font" 2>/dev/null)" ]]; then
+      mkdir -p "$FONT_DIR/NerdFonts/$font"
+      curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/${font}.tar.xz" \
+        | tar -xJ -C "$FONT_DIR/NerdFonts/$font" \
+        || { warn "No se pudo instalar la fuente $font."; rm -rf "$FONT_DIR/NerdFonts/$font"; }
+    fi
+  done
+  if [[ ! -f "$FONT_DIR/Outfit/Outfit[wght].ttf" ]]; then
+    curl -fsSL -o "$FONT_DIR/Outfit/Outfit[wght].ttf" \
+      "https://github.com/google/fonts/raw/main/ofl/outfit/Outfit%5Bwght%5D.ttf" \
+      || warn "No se pudo instalar la fuente Outfit."
+  fi
+  run fc-cache -f
+  # Solo se instala; elegir el tema de iconos es ajuste del escritorio
+  $DNF papirus-icon-theme
+fi
+
+# ---------------------------------------------------------------------
+step "14. Mantenimiento"
 run sudo systemctl enable --now fstrim.timer
 
 sleep 1   # dar tiempo a que tee vacíe los buffers
@@ -160,6 +315,7 @@ else
   rm -f "$ERRLOG"
 fi
 echo "Reinicia el equipo para aplicar todo:  sudo reboot"
+echo "(el reinicio también activa el grupo gamemode, starship y nvm en terminales nuevas)"
 if [[ $HAS_INTEL == yes || $HAS_AMD == yes ]]; then
   echo "Tras reiniciar, verifica aceleración de video con:  vainfo"
 fi
