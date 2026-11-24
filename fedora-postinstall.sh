@@ -90,6 +90,12 @@ fi
 # ---------------------------------------------------------------------
 step "2. Actualizar el sistema"
 run sudo dnf -y upgrade --refresh
+# Un rpmdb con versiones duplicadas (típico tras una actualización interrumpida)
+# hace fallar luego instalaciones multilib como Steam (i686 vs x86_64).
+if [[ -n "$(dnf repoquery --duplicates -q 2>/dev/null)" ]]; then
+  warn "Hay paquetes RPM duplicados (actualización previa incompleta); limpiando"
+  run sudo dnf -y remove --duplicates
+fi
 
 # ---------------------------------------------------------------------
 step "3. Repositorios RPM Fusion (free + nonfree)"
@@ -115,6 +121,10 @@ step "5. Códecs multimedia + aceleración de video por hardware"
 run sudo dnf -y swap ffmpeg-free ffmpeg --allowerasing
 run sudo dnf -y update @multimedia --setopt=install_weak_deps=False --exclude=PackageKit-gstreamer-plugin
 $DNF mozilla-openh264 gstreamer1-plugin-openh264 libva-utils
+# noopenh264 (stub de Fedora) choca con openh264 (Cisco): dejar solo el real
+if rpm -q noopenh264 openh264 &>/dev/null; then
+  run sudo dnf -y remove noopenh264
+fi
 
 if [[ $HAS_INTEL == yes ]]; then
   $DNF intel-media-driver
@@ -251,7 +261,16 @@ if [[ $DO_BROWSERS == yes ]]; then
       | sudo tee /etc/yum.repos.d/google-chrome.repo >/dev/null
   fi
   run sudo dnf config-manager setopt google-chrome.enabled=1
+  # Importar la clave antes (el %post de Chrome puede fallar por el bloqueo del keyring)
+  run sudo rpm --import https://dl.google.com/linux/linux_signing_key.pub
   $DNF google-chrome-stable
+  # Si Chrome ya está como RPM, quitar el Flatpak para que no salga duplicado en el menú.
+  # Sin --delete-data: los datos de ~/.var/app/com.google.Chrome se conservan.
+  if rpm -q google-chrome-stable &>/dev/null \
+     && flatpak list --app --columns=application 2>/dev/null | grep -qx com.google.Chrome; then
+    info "Chrome está como RPM y como Flatpak: quitando el Flatpak"
+    run flatpak uninstall -y --noninteractive com.google.Chrome
+  fi
 
   # Brave
   [[ -f /etc/yum.repos.d/brave-browser.repo ]] \
