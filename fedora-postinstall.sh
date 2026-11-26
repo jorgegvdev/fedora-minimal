@@ -15,7 +15,7 @@ set -uo pipefail
 DO_SNAPSHOTS="yes"   # Snapper (solo si / es Btrfs): volver atrás si una actualización rompe algo
 DO_FIRMWARE="yes"    # Actualizaciones de firmware/BIOS vía fwupd (LVFS)
 DO_CLI="yes"         # Utilidades de terminal, ghostty y starship
-DO_DEV="yes"         # git, herramientas de compilación, nvm + Node LTS, clave SSH y GitHub
+DO_DEV="yes"         # git, herramientas de compilación, nvm + Node LTS, gentle-ai, clave SSH y GitHub
 DO_GAMING="yes"      # Steam, GameMode y MangoHud (nativos)
 DO_BROWSERS="yes"    # Google Chrome (repo oficial) y Helium (COPR oficial imput/helium)
 DO_APPS="yes"        # LibreOffice (dnf) + IDEs y apps de usuario (Flatpak)
@@ -363,6 +363,16 @@ if [[ $DO_DEV == yes ]]; then
     set -u -o pipefail
   fi
 
+  # gentle-ai: capa de configuración para agentes de IA (Claude Code, OpenCode...).
+  # https://github.com/Gentleman-Programming/gentle-ai
+  # Solo instala el binario en ~/.local/bin (con checksum verificado). Configurar los
+  # agentes es interactivo: ejecuta `gentle-ai` después del script.
+  if ! command -v gentle-ai &>/dev/null && [[ ! -x $HOME/.local/bin/gentle-ai ]]; then
+    curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh \
+      | bash -s -- --method binary --dir "$HOME/.local/bin" \
+      || warn "No se pudo instalar gentle-ai."
+  fi
+
   # Clave SSH y alta en GitHub
   SSH_KEY="$HOME/.ssh/id_ed25519"
   if [[ ! -f $SSH_KEY ]]; then
@@ -506,6 +516,9 @@ else
 fi
 echo "Reinicia el equipo para aplicar todo:  sudo reboot"
 echo "(el reinicio también activa el grupo gamemode, starship y nvm en terminales nuevas)"
+if [[ -x $HOME/.local/bin/gentle-ai ]] || command -v gentle-ai &>/dev/null; then
+  echo "Configura tus agentes de IA (interactivo):  gentle-ai"
+fi
 if [[ $HAS_INTEL == yes || $HAS_AMD == yes ]]; then
   echo "Tras reiniciar, verifica aceleración de video con:  vainfo"
 fi
