@@ -17,7 +17,7 @@ DO_FIRMWARE="yes"    # Actualizaciones de firmware/BIOS vía fwupd (LVFS)
 DO_CLI="yes"         # Utilidades de terminal, ghostty y starship
 DO_DEV="yes"         # git, herramientas de compilación, nvm + Node LTS, clave SSH y GitHub
 DO_GAMING="yes"      # Steam, GameMode y MangoHud (nativos)
-DO_BROWSERS="yes"    # Firefox, Chrome, Brave y Vivaldi (repos oficiales)
+DO_BROWSERS="yes"    # Google Chrome (repo oficial) y Helium (COPR oficial imput/helium)
 DO_APPS="yes"        # LibreOffice (dnf) + IDEs y apps de usuario (Flatpak)
 DO_FONTS="yes"       # Fuentes (Nerd Fonts, Outfit) y paquete de iconos Papirus
 
@@ -102,9 +102,7 @@ step "3. Repositorios RPM Fusion (free + nonfree)"
 $DNF \
   "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDORA_VER}.noarch.rpm" \
   "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDORA_VER}.noarch.rpm"
-run sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1 \
-  || run sudo dnf config-manager --set-enabled fedora-cisco-openh264 \
-  || warn "No se pudo habilitar fedora-cisco-openh264."
+run sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1
 
 # ---------------------------------------------------------------------
 step "4. Flathub completo"
@@ -172,14 +170,159 @@ if [[ $DO_CLI == yes ]]; then
   $DNF btop htop fastfetch ncdu ripgrep fd-find fzf bat eza zoxide \
     jq curl wget unzip 7zip rsync tree
   # ghostty y starship no están en los repos de Fedora: COPR
+  # (--skip-unavailable oculta un paquete inexistente: se comprueba después)
   if ! command -v ghostty &>/dev/null; then
     run sudo dnf copr enable -y scottames/ghostty && $DNF ghostty
+    command -v ghostty &>/dev/null \
+      || warn "ghostty no se instaló: puede que el COPR no tenga build para Fedora $FEDORA_VER."
   fi
   if ! command -v starship &>/dev/null; then
     run sudo dnf copr enable -y atim/starship && $DNF starship
+    command -v starship &>/dev/null \
+      || warn "starship no se instaló: puede que el COPR no tenga build para Fedora $FEDORA_VER."
   fi
-  if command -v starship &>/dev/null && ! grep -q 'starship init bash' ~/.bashrc 2>/dev/null; then
-    echo 'eval "$(starship init bash)"' >> ~/.bashrc
+
+  # Ghostty: Catppuccin (Latte en modo claro, Mocha en oscuro) + CaskaydiaCove Nerd Font.
+  # Solo añade las claves que falten: lo que ya hayas configurado tú se respeta.
+  GHOSTTY_DIR="$HOME/.config/ghostty"
+  if [[ -f $GHOSTTY_DIR/config ]]; then
+    GHOSTTY_CFG="$GHOSTTY_DIR/config"
+  else
+    GHOSTTY_CFG="$GHOSTTY_DIR/config.ghostty"   # nombre por defecto desde Ghostty 1.2
+  fi
+  mkdir -p "$GHOSTTY_DIR" && touch "$GHOSTTY_CFG"
+  ghostty_set() {
+    grep -qE "^[[:space:]]*$1[[:space:]]*=" "$GHOSTTY_CFG" || echo "$1 = $2" >> "$GHOSTTY_CFG"
+  }
+  ghostty_set theme "light:Catppuccin Latte,dark:Catppuccin Mocha"
+  ghostty_set font-family "CaskaydiaCove Nerd Font"
+  ghostty_set font-size 12
+  ghostty_set window-padding-x 10
+  ghostty_set window-padding-y 8
+  ghostty_set window-padding-balance true
+
+  # Starship: prompt minimalista de una línea al estilo catppuccin_mocha de oh-my-posh.
+  # Usa colores ANSI, así sigue al tema de Ghostty. Necesita una Nerd Font (bloque 13).
+  # Si ya tienes tu propio starship.toml no se toca (salvo el preset Pastel Powerline
+  # que instalaba una versión anterior del script, que se reemplaza).
+  if command -v starship &>/dev/null; then
+    STARSHIP_CFG="$HOME/.config/starship.toml"
+    if [[ ! -f $STARSHIP_CFG || "$(<"$STARSHIP_CFG")" == "$(starship preset pastel-powerline)" ]]; then
+      mkdir -p "$HOME/.config"
+      cat > "$STARSHIP_CFG" <<'EOF'
+"$schema" = "https://starship.rs/config-schema.json"
+
+# Estilo minimalista inspirado en el tema catppuccin_mocha de oh-my-posh:
+# una línea, sin fondos. Usa los colores ANSI de la terminal, así sigue
+# automáticamente al tema de Ghostty (Catppuccin Latte / Mocha).
+format = "$os$username$hostname $directory$git_branch$git_state$git_status$python$cmd_duration$character"
+add_newline = true
+
+[os]
+disabled = false
+format = "[$symbol]($style) "
+style = "bold"
+
+[os.symbols]
+Fedora = "\uf30a"
+Linux = "\uf17c"
+
+[username]
+show_always = true
+format = "[$user]($style)"
+style_user = "blue"
+style_root = "bold red"
+
+[hostname]
+ssh_only = false
+format = "[@$hostname]($style)"
+style = "blue"
+
+[directory]
+format = "[$path]($style)[$read_only]($read_only_style) "
+style = "purple"
+read_only = " \uf023"
+truncation_length = 4
+truncate_to_repo = false
+
+[git_branch]
+format = "[$symbol$branch]($style) "
+symbol = "\ue725"
+style = "bold blue"
+
+[git_state]
+format = "[$state( $progress_current/$progress_total)]($style) "
+style = "yellow"
+
+[git_status]
+format = "([$all_status$ahead_behind]($style) )"
+style = "yellow"
+
+[python]
+format = "[\ue73c $virtualenv]($style) "
+style = "green"
+detect_extensions = []
+detect_files = []
+
+[cmd_duration]
+format = "[\uf252 $duration]($style) "
+style = "yellow"
+min_time = 2000
+
+[character]
+success_symbol = "[›](bold)"
+error_symbol = "[›](bold red)"
+vimcmd_symbol = "[‹](bold green)"
+EOF
+    else
+      info "Ya tienes un starship.toml propio ($STARSHIP_CFG); no lo cambio."
+    fi
+    # shellcheck disable=SC2016  # debe quedar literal en .bashrc
+    grep -q 'starship init bash' ~/.bashrc 2>/dev/null \
+      || echo 'eval "$(starship init bash)"' >> ~/.bashrc
+  fi
+
+  # Fastfetch: logo grande de Fedora + 16 módulos con iconos Nerd Font (necesita la fuente del bloque 13).
+  # Si ya tienes tu propia config, no se toca.
+  FASTFETCH_CFG="$HOME/.config/fastfetch/config.jsonc"
+  if [[ ! -f $FASTFETCH_CFG ]]; then
+    mkdir -p "${FASTFETCH_CFG%/*}"
+    cat > "$FASTFETCH_CFG" <<'EOF'
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "source": "Fedora",
+    "padding": { "top": 1, "left": 1, "right": 2 }
+  },
+  "display": {
+    "separator": "  "
+  },
+  "modules": [
+    { "type": "title", "format": "{#1}{user-name-colored}" },
+    { "type": "custom", "format": "────────────────────────────" },
+    { "type": "os",           "key": "󰍹 OS",        "keyColor": "blue",    "keyWidth": 14 },
+    { "type": "host",         "key": "󰌢 Host",      "keyColor": "green",   "keyWidth": 14 },
+    { "type": "kernel",       "key": " Kernel",    "keyColor": "yellow",  "keyWidth": 14 },
+    { "type": "packages",     "key": "󰏖 Paquetes",  "keyColor": "magenta", "keyWidth": 14 },
+    { "type": "de",           "key": "󰕮 DE",        "keyColor": "blue",    "keyWidth": 14 },
+    { "type": "wm",           "key": "󱂬 WM",        "keyColor": "magenta", "keyWidth": 14 },
+    { "type": "shell",        "key": "󰞷 Shell",     "keyColor": "green",   "keyWidth": 14 },
+    { "type": "terminal",     "key": "󰆍 Terminal",  "keyColor": "cyan",    "keyWidth": 14 },
+    { "type": "terminalfont", "key": "󰛖 Fuente",    "keyColor": "magenta", "keyWidth": 14 },
+    { "type": "uptime",       "key": "󰅐 Uptime",    "keyColor": "cyan",    "keyWidth": 14 },
+    { "type": "cpu",          "key": "󰻠 CPU",       "keyColor": "red",     "keyWidth": 14 },
+    { "type": "gpu",          "key": "󰢮 GPU",       "keyColor": "yellow",  "keyWidth": 14 },
+    { "type": "display",      "key": "󰍺 Pantalla",  "keyColor": "blue",    "keyWidth": 14 },
+    { "type": "memory",       "key": "󰍛 RAM",       "keyColor": "cyan",    "keyWidth": 14 },
+    { "type": "disk",         "key": "󰋊 Disco",     "keyColor": "white",   "keyWidth": 14, "folders": "/" },
+    { "type": "battery",      "key": "󰁹 Batería",   "keyColor": "green",   "keyWidth": 14 },
+    { "type": "custom", "format": "────────────────────────────" },
+    { "type": "colors", "symbol": "circle" }
+  ]
+}
+EOF
+  else
+    info "Ya tienes una config de fastfetch ($FASTFETCH_CFG); no la cambio."
   fi
 fi
 
@@ -225,7 +368,9 @@ if [[ $DO_DEV == yes ]]; then
   if [[ ! -f $SSH_KEY ]]; then
     if [[ -t 0 ]]; then
       mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
-      run ssh-keygen -t ed25519 -C "$(git config --global user.email)" -f "$SSH_KEY" </dev/tty
+      SSH_COMMENT="$(git config --global user.email)"
+      [[ -n $SSH_COMMENT ]] || SSH_COMMENT="$USER@$HOSTNAME"
+      run ssh-keygen -t ed25519 -C "$SSH_COMMENT" -f "$SSH_KEY" </dev/tty
     else
       warn "Sin terminal interactiva: omito la clave SSH."
     fi
@@ -250,8 +395,28 @@ fi
 
 # ---------------------------------------------------------------------
 if [[ $DO_BROWSERS == yes ]]; then
-  step "11. Navegadores"
-  $DNF firefox
+  step "11. Navegadores (Google Chrome + Helium, predeterminado)"
+
+  # Limpieza de navegadores que instalaban versiones anteriores del script.
+  # Firefox se deja (viene de serie). Los datos de usuario (~/.config, ~/.var/app) se conservan.
+  for pkg in brave-browser vivaldi-stable; do
+    if rpm -q "$pkg" &>/dev/null; then
+      info "Quitando $pkg"
+      run sudo dnf -y remove "$pkg"
+    fi
+  done
+  for repo in brave-browser.repo vivaldi-fedora.repo vivaldi.repo; do
+    if [[ -f /etc/yum.repos.d/$repo ]]; then
+      run sudo rm -f "/etc/yum.repos.d/$repo"
+    fi
+  done
+  if flatpak list --system --app --columns=application 2>/dev/null | grep -qx app.zen_browser.zen; then
+    info "Quitando Zen Browser (Flatpak)"
+    run sudo flatpak uninstall -y --noninteractive --system app.zen_browser.zen
+  fi
+  if flatpak list --user --app --columns=application 2>/dev/null | grep -qx app.zen_browser.zen; then
+    run flatpak uninstall -y --noninteractive --user app.zen_browser.zen
+  fi
 
   # Google Chrome (en Workstation el repo puede existir ya, deshabilitado)
   if [[ ! -f /etc/yum.repos.d/google-chrome.repo ]]; then
@@ -272,15 +437,22 @@ if [[ $DO_BROWSERS == yes ]]; then
     run flatpak uninstall -y --noninteractive com.google.Chrome
   fi
 
-  # Brave
-  [[ -f /etc/yum.repos.d/brave-browser.repo ]] \
-    || run sudo dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
-  $DNF brave-browser
+  # Helium (Chromium sin Google, de imput.net). COPR mantenido por el propio proyecto.
+  if ! rpm -q helium-bin &>/dev/null; then
+    run sudo dnf copr enable -y imput/helium && $DNF helium-bin
+  fi
 
-  # Vivaldi
-  [[ -f /etc/yum.repos.d/vivaldi-fedora.repo ]] \
-    || run sudo dnf config-manager addrepo --from-repofile=https://repo.vivaldi.com/archive/vivaldi-fedora.repo
-  $DNF vivaldi-stable
+  # Helium como navegador predeterminado (xdg-mime vale para cualquier escritorio;
+  # xdg-settings además avisa a GNOME/KDE si hay sesión gráfica)
+  if [[ -f /usr/share/applications/helium.desktop ]]; then
+    command -v xdg-mime &>/dev/null || $DNF xdg-utils
+    run xdg-mime default helium.desktop \
+      x-scheme-handler/http x-scheme-handler/https text/html application/xhtml+xml
+    xdg-settings set default-web-browser helium.desktop 2>/dev/null || true
+    info "Helium es el navegador predeterminado"
+  else
+    warn "Helium no está instalado: no se cambia el navegador predeterminado."
+  fi
 fi
 
 # ---------------------------------------------------------------------
@@ -288,7 +460,6 @@ if [[ $DO_APPS == yes ]]; then
   step "12. Apps de usuario"
   $DNF libreoffice-writer libreoffice-calc libreoffice-impress
   run sudo flatpak install -y --noninteractive flathub \
-    app.zen_browser.zen \
     dev.zed.Zed com.vscodium.codium \
     com.jetbrains.PhpStorm com.jetbrains.DataGrip com.jetbrains.WebStorm \
     com.jetbrains.IntelliJ-IDEA-Ultimate \

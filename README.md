@@ -31,11 +31,11 @@ bash fedora-postinstall.sh
    - AMD → drivers `freeworld` de Mesa
 5. Si `/` es **Btrfs**, configura **snapper** (snapshots con límites conservadores) para poder volver atrás si una actualización rompe algo.
 6. Actualiza el **firmware** (BIOS, EC, SSD…) vía fwupd/LVFS.
-7. **CLI** (`DO_CLI`): btop, htop, fastfetch, ncdu, ripgrep, fd, fzf, bat, eza, zoxide, jq, curl, wget, unzip, 7zip, rsync, tree; **ghostty** y **starship** (COPR) con `starship init` en `~/.bashrc`.
+7. **CLI** (`DO_CLI`): btop, htop, fastfetch, ncdu, ripgrep, fd, fzf, bat, eza, zoxide, jq, curl, wget, unzip, 7zip, rsync, tree; **ghostty** y **starship** (COPR) con `starship init` en `~/.bashrc`. Ghostty queda con tema **Catppuccin** (Latte en modo claro, Mocha en oscuro) y CaskaydiaCove Nerd Font; el prompt de **Starship** es minimalista, de una línea (icono de Fedora, `usuario@equipo`, ruta, rama de git), al estilo `catppuccin_mocha` de oh-my-posh, y sigue el tema claro/oscuro de Ghostty. **fastfetch** con el logo grande de Fedora y 16 módulos con iconos (sistema, hardware, batería…) (`~/.config/fastfetch/config.jsonc`). Si ya tienes ajustes propios (`starship.toml`, config de fastfetch, claves en la config de Ghostty), no se sobrescriben.
 8. **Desarrollo** (`DO_DEV`): git, gh, `development-tools`, nvm + Node LTS, pnpm y Claude Code globales, clave SSH ed25519 subida a GitHub con `gh`.
 9. **Juegos** (`DO_GAMING`): Steam, GameMode y MangoHud nativos.
-10. **Navegadores** (`DO_BROWSERS`): Firefox, Chrome, Brave y Vivaldi desde sus repos oficiales.
-11. **Apps** (`DO_APPS`): LibreOffice (dnf); Flatpak: Zen, Zed, VSCodium, PhpStorm, DataGrip, WebStorm, IntelliJ IDEA, Spotify, Discord, VLC, Bitwarden, Obsidian, Bruno, Flatseal.
+10. **Navegadores** (`DO_BROWSERS`): Google Chrome (repo oficial de Google) y **Helium** (COPR oficial `imput/helium`, paquete `helium-bin`), que queda como navegador **predeterminado**. Quita Brave, Vivaldi y Zen (y sus repos) si los instaló una versión anterior del script, sin borrar sus datos. Firefox se deja.
+11. **Apps** (`DO_APPS`): LibreOffice (dnf); Flatpak: Zed, VSCodium, PhpStorm, DataGrip, WebStorm, IntelliJ IDEA, Spotify, Discord, VLC, Bitwarden, Obsidian, Bruno, Flatseal.
 12. **Fuentes e iconos** (`DO_FONTS`): Nerd Fonts (Cascadia Code, Cascadia Mono, JetBrains Mono, Fira Code) y Outfit en `~/.local/share/fonts`; paquete `papirus-icon-theme` (elegir el tema lo haces tú en tu escritorio).
 13. Activa `fstrim.timer`.
 
@@ -57,5 +57,5 @@ Interruptores al inicio del script: `DO_SNAPSHOTS`, `DO_FIRMWARE`, `DO_CLI`, `DO
 
 - Solo Fedora con `dnf` (Workstation, KDE, XFCE…). **No** sirve en Fedora Atomic (Silverblue, Kinoite, Bazzite), que usa `rpm-ostree`.
 - Probado en Fedora 45 con GPU Intel. Las ramas de AMD y los bloques de CLI, desarrollo, juegos, navegadores y apps no se han ejecutado todavía.
-- ghostty y starship dependen de repos COPR de terceros: pueden no tener build para tu versión de Fedora.
+- ghostty y starship dependen de repos COPR de terceros (Helium usa el COPR de su propio proyecto): pueden no tener build para tu versión de Fedora.
 - Los nombres de paquetes pueden cambiar entre versiones de Fedora. El script no se detiene por un fallo puntual; revisa el log.
