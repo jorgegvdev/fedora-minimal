@@ -16,6 +16,21 @@ gamemoderun mangohud %command%
 - Antes de comprar un juego online, revisa su anticheat en [ProtonDB](https://www.protondb.com).
 - Steam, GameMode y MangoHud van todos nativos. Mezclar versiones Flatpak y nativas puede romper el overlay y Proton.
 
+## Temas, iconos y cursores
+
+El script los instala pero no activa ninguno. En GNOME, abre **Retoques** (GNOME Tweaks) → *Apariencia*:
+
+- **Iconos:** Papirus (sistema) o `Gruvbox-Plus-Dark`.
+- **Cursor:** `Bibata-Modern-Classic`, `Bibata-Modern-Ice`, `Mocu-Black-Right` o `Mocu-White-Right`.
+- **Tema de aplicaciones (GTK):** `Gruvbox-Dark`, `Orchis-Dark` o `Graphite-Dark`.
+- **Tema del shell** (barra superior): requiere la extensión User Themes. Actívala una vez con `gnome-extensions enable user-theme@gnome-shell-extensions.gcampax.github.com` y elige el mismo tema en el selector *Shell*.
+
+Si el cursor se ve pequeño: `gsettings set org.gnome.desktop.interface cursor-size 32`.
+
+En Retoques los cursores también aparecen en la lista de iconos, porque comparten la carpeta `~/.local/share/icons`. Es normal: elige iconos solo en *Iconos* y el cursor solo en *Cursor*.
+
+Las apps libadwaita (Ajustes, Archivos) ignoran el tema GTK; ahí solo cambian iconos y cursor.
+
 ## Extras opcionales
 
 **Docker Engine** (no lo instala el script; revisa https://docs.docker.com/engine/install/fedora/ por si cambió):

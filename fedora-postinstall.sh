@@ -2,8 +2,8 @@
 # =====================================================================
 #  Post-instalación Fedora — base estable + herramientas de uso diario
 #  Base (DNF, RPM Fusion, Flathub, códecs, snapshots, firmware) y bloques
-#  opcionales (CLI, desarrollo, juegos, navegadores, apps). No toca el
-#  escritorio, extensiones ni temas.
+#  opcionales (CLI, desarrollo, juegos, navegadores, apps, temas). Instala
+#  temas, iconos y cursores pero no activa ninguno ni toca extensiones.
 #  Funciona con cualquier escritorio (KDE, GNOME, XFCE...).
 #
 #  Ejecutar como usuario normal (NO con sudo):  bash fedora-postinstall.sh
@@ -20,9 +20,21 @@ DO_GAMING="yes"      # Steam, GameMode y MangoHud (nativos)
 DO_BROWSERS="yes"    # Google Chrome (repo oficial) y Helium (COPR oficial imput/helium)
 DO_APPS="yes"        # LibreOffice (dnf) + IDEs y apps de usuario (Flatpak)
 DO_FONTS="yes"       # Fuentes (Nerd Fonts, Outfit) y paquete de iconos Papirus
+DO_THEMES="yes"      # Temas GTK/shell (Gruvbox, Orchis, Graphite), iconos Gruvbox Plus y cursores (Bibata, Mocu)
 
 NVM_VERSION="v0.41.0"   # https://github.com/nvm-sh/nvm/releases
 NERD_FONTS_VERSION="v3.5.1"   # https://github.com/ryanoasis/nerd-fonts/releases
+
+# Temas, iconos y cursores: todo fijado a una versión exacta. Los repos van por commit
+# (git verifica el hash al descargar); los tarballs de Bibata, por sha256.
+BIBATA_VERSION="v2.0.7"   # https://github.com/ful1e5/Bibata_Cursor/releases
+BIBATA_CLASSIC_SHA256="7d3495864e5bbef02f5e77de760b2905903b63c71495a78ef6306d19a3b556d8"
+BIBATA_ICE_SHA256="a68cae60c4dc706350e194ebc91c5fe48bc7bc9d59e119555834a2a7ee5078ef"
+MOCU_COMMIT="efdd71279b79bf1e2566c38becc5e7c4ab2d900c"            # sevmeyer/mocu-xcursor
+GRUVBOX_PLUS_COMMIT="d234e270f5b97c791f891f4f21f346c07d67d64f"    # SylEleuth/gruvbox-plus-icon-pack
+GRUVBOX_GTK_COMMIT="578cd220b5ff6e86b078a6111d26bb20ec8c733f"     # Fausto-Korpsvart/Gruvbox-GTK-Theme
+ORCHIS_COMMIT="a4c48a425e63808345e824495964bd9c2f462e04"          # vinceliuice/Orchis-theme
+GRAPHITE_COMMIT="364173f47407164948788e4abb5e2eb46600f71a"        # vinceliuice/Graphite-gtk-theme
 
 # ---------- Logs: carpeta logs/ junto al script, un par de archivos por ejecución ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -502,7 +514,101 @@ if [[ $DO_FONTS == yes ]]; then
 fi
 
 # ---------------------------------------------------------------------
-step "14. Mantenimiento"
+if [[ $DO_THEMES == yes ]]; then
+  step "14. Temas, iconos y cursores"
+  # Solo se instalan en tu home; elegir cuál usar es ajuste del escritorio
+  # (GNOME Retoques: Apariencia; el tema del shell requiere la extensión User Themes).
+  # sassc compila los temas; xcursorgen, rsvg-convert y xmlstarlet compilan Mocu.
+  $DNF git sassc xcursorgen librsvg2-tools xmlstarlet
+
+  ICON_DIR="$HOME/.local/share/icons"
+  THEME_DIR="$HOME/.themes"
+  mkdir -p "$ICON_DIR" "$THEME_DIR"
+  WORK="$(mktemp -d)"
+
+  # Descarga un commit exacto de un repo (git verifica el hash). Con rutas extra,
+  # baja solo esas carpetas (sparse-checkout) para no traer cientos de MB inútiles.
+  # Uso: git_pinned URL COMMIT DESTINO [carpeta...]
+  git_pinned() {
+    local url=$1 sha=$2 dir=$3; shift 3
+    rm -rf "$dir"; mkdir -p "$dir" || return 1
+    git -C "$dir" init -q \
+      && git -C "$dir" remote add origin "$url" \
+      && { (( $# == 0 )) || git -C "$dir" sparse-checkout set "$@"; } \
+      && git -C "$dir" fetch -q --depth 1 --filter=blob:none origin "$sha" \
+      && git -C "$dir" checkout -q FETCH_HEAD
+  }
+
+  # Cursores Bibata (tarball de la release, sha256 verificado)
+  for variant in Classic Ice; do
+    [[ -d $ICON_DIR/Bibata-Modern-$variant ]] && continue
+    case $variant in
+      Classic) expected=$BIBATA_CLASSIC_SHA256 ;;
+      Ice)     expected=$BIBATA_ICE_SHA256 ;;
+    esac
+    tarball="$WORK/Bibata-Modern-$variant.tar.xz"
+    if curl -fsSL -o "$tarball" \
+         "https://github.com/ful1e5/Bibata_Cursor/releases/download/${BIBATA_VERSION}/Bibata-Modern-$variant.tar.xz" \
+       && echo "$expected  $tarball" | sha256sum -c --quiet -; then
+      run tar -xJf "$tarball" -C "$ICON_DIR"
+    else
+      warn "No se pudo instalar el cursor Bibata-Modern-$variant (descarga o checksum)."
+    fi
+  done
+
+  # Cursores Mocu (se compilan con make.sh; "Right" = mano derecha)
+  if [[ ! -d $ICON_DIR/Mocu-Black-Right || ! -d $ICON_DIR/Mocu-White-Right ]]; then
+    if git_pinned https://github.com/sevmeyer/mocu-xcursor.git "$MOCU_COMMIT" "$WORK/mocu" \
+       && (cd "$WORK/mocu" && ./make.sh >/dev/null); then
+      run cp -a "$WORK/mocu/dist/Mocu-Black-Right" "$WORK/mocu/dist/Mocu-White-Right" "$ICON_DIR/"
+    else
+      warn "No se pudo instalar el cursor Mocu."
+    fi
+  fi
+
+  # Iconos Gruvbox Plus (Papirus ya viene del bloque 13)
+  if [[ ! -d $ICON_DIR/Gruvbox-Plus-Dark ]]; then
+    if git_pinned https://github.com/SylEleuth/gruvbox-plus-icon-pack.git "$GRUVBOX_PLUS_COMMIT" \
+         "$WORK/gruvbox-plus" Gruvbox-Plus-Dark; then
+      run cp -a "$WORK/gruvbox-plus/Gruvbox-Plus-Dark" "$ICON_DIR/"
+      run gtk-update-icon-cache -q -f "$ICON_DIR/Gruvbox-Plus-Dark"
+    else
+      warn "No se pudo instalar los iconos Gruvbox Plus."
+    fi
+  fi
+
+  # Temas GTK + shell (variante oscura)
+  if [[ ! -d $THEME_DIR/Gruvbox-Dark ]]; then
+    if git_pinned https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme.git "$GRUVBOX_GTK_COMMIT" \
+         "$WORK/gruvbox-gtk" themes; then
+      run bash -c 'cd "$1/themes" && ./install.sh -d "$2" -c dark' _ "$WORK/gruvbox-gtk" "$THEME_DIR"
+    else
+      warn "No se pudo instalar el tema Gruvbox GTK."
+    fi
+  fi
+  if [[ ! -d $THEME_DIR/Orchis-Dark ]]; then
+    if git_pinned https://github.com/vinceliuice/Orchis-theme.git "$ORCHIS_COMMIT" "$WORK/orchis"; then
+      run bash -c 'cd "$1" && ./install.sh -d "$2" -c dark -s standard' _ "$WORK/orchis" "$THEME_DIR"
+    else
+      warn "No se pudo instalar el tema Orchis."
+    fi
+  fi
+  if [[ ! -d $THEME_DIR/Graphite-Dark ]]; then
+    if git_pinned https://github.com/vinceliuice/Graphite-gtk-theme.git "$GRAPHITE_COMMIT" "$WORK/graphite"; then
+      run bash -c 'cd "$1" && ./install.sh -d "$2" -c dark -s standard' _ "$WORK/graphite" "$THEME_DIR"
+      # Su instalador deja además una app suelta (gnome-theme-switcher) que no se pidió
+      rm -f "$HOME/.local/bin/gnome-theme-switcher" \
+            "$HOME/.local/share/applications/org.gnome.GTK4ThemeSwitcher.desktop"
+    else
+      warn "No se pudo instalar el tema Graphite."
+    fi
+  fi
+
+  rm -rf "$WORK"
+fi
+
+# ---------------------------------------------------------------------
+step "15. Mantenimiento"
 run sudo systemctl enable --now fstrim.timer
 
 sleep 1   # dar tiempo a que tee vacíe los buffers

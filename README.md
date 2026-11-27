@@ -37,13 +37,14 @@ bash fedora-postinstall.sh
 10. **Navegadores** (`DO_BROWSERS`): Google Chrome (repo oficial de Google) y **Helium** (COPR oficial `imput/helium`, paquete `helium-bin`), que queda como navegador **predeterminado**. Quita Brave, Vivaldi y Zen (y sus repos) si los instaló una versión anterior del script, sin borrar sus datos. Firefox se deja.
 11. **Apps** (`DO_APPS`): LibreOffice (dnf); Flatpak: Zed, VSCodium, PhpStorm, DataGrip, WebStorm, IntelliJ IDEA, Spotify, Discord, VLC, Bitwarden, Obsidian, Bruno, Flatseal.
 12. **Fuentes e iconos** (`DO_FONTS`): Nerd Fonts (Cascadia Code, Cascadia Mono, JetBrains Mono, Fira Code) y Outfit en `~/.local/share/fonts`; paquete `papirus-icon-theme` (elegir el tema lo haces tú en tu escritorio).
-13. Activa `fstrim.timer`.
+13. **Temas, iconos y cursores** (`DO_THEMES`): solo los instala en tu home, no activa ninguno. Temas GTK y de shell **Gruvbox**, **Orchis** y **Graphite** (variante oscura, en `~/.themes`), iconos **Gruvbox Plus** (Papirus viene del bloque anterior) y cursores **Bibata** (Classic e Ice) y **Mocu** (negro y blanco) en `~/.local/share/icons`. Todo va fijado a una versión exacta: los repos por commit y los tarballs de Bibata por sha256. Instala `sassc`, `xcursorgen`, `librsvg2-tools` y `xmlstarlet`, necesarios para compilarlos. Cómo elegirlos: [docs/despues-del-script.md](docs/despues-del-script.md#temas-iconos-y-cursores).
+14. Activa `fstrim.timer`.
 
-Interruptores al inicio del script: `DO_SNAPSHOTS`, `DO_FIRMWARE`, `DO_CLI`, `DO_DEV`, `DO_GAMING`, `DO_BROWSERS`, `DO_APPS`, `DO_FONTS`.
+Interruptores al inicio del script: `DO_SNAPSHOTS`, `DO_FIRMWARE`, `DO_CLI`, `DO_DEV`, `DO_GAMING`, `DO_BROWSERS`, `DO_APPS`, `DO_FONTS`, `DO_THEMES`.
 
 ## Qué NO hace (a propósito)
 
-- No toca el escritorio: sin extensiones, temas ni ajustes.
+- No activa nada en el escritorio: sin extensiones ni ajustes. Los temas, iconos y cursores solo se instalan; tú eliges cuál usar.
 - No instala contenedores (Docker/Podman) ni servidores de base de datos.
 - No instala el driver propietario de NVIDIA. Ver [docs/nvidia.md](docs/nvidia.md).
 - No ejecuta `dnf autoremove`, que puede borrar drivers marcados como dependencia.
@@ -56,6 +57,6 @@ Interruptores al inicio del script: `DO_SNAPSHOTS`, `DO_FIRMWARE`, `DO_CLI`, `DO
 ## Limitaciones
 
 - Solo Fedora con `dnf` (Workstation, KDE, XFCE…). **No** sirve en Fedora Atomic (Silverblue, Kinoite, Bazzite), que usa `rpm-ostree`.
-- Probado en Fedora 45 con GPU Intel. Las ramas de AMD y los bloques de CLI, desarrollo, juegos, navegadores y apps no se han ejecutado todavía.
+- Probado en Fedora 45 con GPU Intel. Las ramas de AMD y los bloques de CLI, desarrollo, juegos, navegadores y apps no se han ejecutado todavía. El bloque de temas, iconos y cursores se probó aislado (con un `HOME` temporal), no dentro de una ejecución completa.
 - ghostty y starship dependen de repos COPR de terceros (Helium usa el COPR de su propio proyecto): pueden no tener build para tu versión de Fedora.
 - Los nombres de paquetes pueden cambiar entre versiones de Fedora. El script no se detiene por un fallo puntual; revisa el log.
