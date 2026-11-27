@@ -194,7 +194,7 @@ if [[ $DO_CLI == yes ]]; then
       || warn "starship no se instaló: puede que el COPR no tenga build para Fedora $FEDORA_VER."
   fi
 
-  # Ghostty: Catppuccin (Latte en modo claro, Mocha en oscuro) + CaskaydiaCove Nerd Font.
+  # Ghostty: Gruvbox (Light en modo claro, Dark en oscuro), 10 % de transparencia + CaskaydiaCove Nerd Font.
   # Solo añade las claves que falten: lo que ya hayas configurado tú se respeta.
   GHOSTTY_DIR="$HOME/.config/ghostty"
   if [[ -f $GHOSTTY_DIR/config ]]; then
@@ -206,14 +206,16 @@ if [[ $DO_CLI == yes ]]; then
   ghostty_set() {
     grep -qE "^[[:space:]]*$1[[:space:]]*=" "$GHOSTTY_CFG" || echo "$1 = $2" >> "$GHOSTTY_CFG"
   }
-  ghostty_set theme "light:Catppuccin Latte,dark:Catppuccin Mocha"
+  ghostty_set theme "light:Gruvbox Light,dark:Gruvbox Dark"
+  ghostty_set background-opacity 0.9
   ghostty_set font-family "CaskaydiaCove Nerd Font"
   ghostty_set font-size 12
   ghostty_set window-padding-x 10
   ghostty_set window-padding-y 8
   ghostty_set window-padding-balance true
 
-  # Starship: prompt minimalista de una línea al estilo catppuccin_mocha de oh-my-posh.
+  # Starship: prompt minimalista de una línea al estilo catppuccin_mocha de oh-my-posh,
+  # con los colores del tema activo de Ghostty (Gruvbox por defecto).
   # Usa colores ANSI, así sigue al tema de Ghostty. Necesita una Nerd Font (bloque 13).
   # Si ya tienes tu propio starship.toml no se toca (salvo el preset Pastel Powerline
   # que instalaba una versión anterior del script, que se reemplaza).
@@ -226,7 +228,7 @@ if [[ $DO_CLI == yes ]]; then
 
 # Estilo minimalista inspirado en el tema catppuccin_mocha de oh-my-posh:
 # una línea, sin fondos. Usa los colores ANSI de la terminal, así sigue
-# automáticamente al tema de Ghostty (Catppuccin Latte / Mocha).
+# automáticamente al tema de Ghostty (Gruvbox Light / Dark).
 format = "$os$username$hostname $directory$git_branch$git_state$git_status$python$cmd_duration$character"
 add_newline = true
 
