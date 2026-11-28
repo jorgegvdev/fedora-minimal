@@ -18,14 +18,9 @@ gamemoderun mangohud %command%
 
 ## Iconos y cursores
 
-El script los instala pero no activa ninguno. En GNOME, abre **Retoques** (GNOME Tweaks) → *Apariencia*:
-
-- **Iconos:** Papirus (sistema) o `Gruvbox-Plus-Dark`.
-- **Cursor:** `Bibata-Modern-Classic`, `Bibata-Modern-Ice`, `Mocu-Black-Right` o `Mocu-White-Right`.
+El script ya aplica Papirus (iconos) y `Mocu-White-Right` (cursor) con `gsettings`. Para cambiarlos: **Retoques** → *Apariencia*.
 
 Si el cursor se ve pequeño: `gsettings set org.gnome.desktop.interface cursor-size 32`.
-
-En Retoques los cursores también aparecen en la lista de iconos, porque comparten la carpeta `~/.local/share/icons`. Es normal: elige iconos solo en *Iconos* y el cursor solo en *Cursor*.
 
 ## Extras opcionales
 

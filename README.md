@@ -1,8 +1,8 @@
 # fedora-minimal
 
-Post-instalación para Fedora Workstation: base estable (DNF, RPM Fusion, Flathub, códecs, snapshots, firmware) más herramientas de uso diario (CLI, desarrollo, juegos, navegadores, apps). Cada bloque se apaga con un interruptor. El escritorio y sus ajustes los configuras tú.
+Post-instalación para Fedora Workstation: base estable (DNF, RPM Fusion, Flathub, códecs, snapshots, firmware) más herramientas de uso diario (CLI, desarrollo, juegos, navegadores, apps). Cada bloque se apaga con un interruptor. Pensado para GNOME: aplica iconos, cursor y fuentes con `gsettings`; instala y activa las extensiones.
 
-Sirve en cualquier equipo y con cualquier escritorio (KDE, GNOME, XFCE…), porque detecta el hardware en vez de asumirlo.
+Sirve en cualquier equipo, porque detecta el hardware en vez de asumirlo.
 
 ## Uso
 
@@ -36,15 +36,15 @@ bash fedora-postinstall.sh
 9. **Juegos** (`DO_GAMING`): Steam, GameMode y MangoHud nativos.
 10. **Navegadores** (`DO_BROWSERS`): Google Chrome (repo oficial de Google) y **Helium** (COPR oficial `imput/helium`, paquete `helium-bin`), que queda como navegador **predeterminado**. Quita Brave, Vivaldi y Zen (y sus repos) si los instaló una versión anterior del script, sin borrar sus datos. Firefox se deja.
 11. **Apps** (`DO_APPS`): LibreOffice (dnf); Flatpak: Zed, VSCodium, PhpStorm, DataGrip, WebStorm, IntelliJ IDEA, Spotify, Discord, VLC, Bitwarden, Obsidian, Bruno, Flatseal.
-12. **Fuentes e iconos** (`DO_FONTS`): Nerd Fonts (Cascadia Code, Cascadia Mono, JetBrains Mono, Fira Code) y Outfit en `~/.local/share/fonts`; paquete `papirus-icon-theme` (elegir el tema lo haces tú en tu escritorio).
-13. **Iconos y cursores** (`DO_APPEARANCE`): solo los instala en tu home, no activa ninguno. Iconos **Gruvbox Plus** (Papirus viene del bloque anterior) y cursores **Bibata** (Classic e Ice) y **Mocu** (negro y blanco) en `~/.local/share/icons`. Todo va fijado a una versión exacta: los repos por commit y los tarballs de Bibata por sha256. Instala `xcursorgen`, `librsvg2-tools` y `xmlstarlet`, necesarios para compilar Mocu. Cómo elegirlos: [docs/despues-del-script.md](docs/despues-del-script.md#iconos-y-cursores).
+12. **Fuentes e iconos** (`DO_FONTS`): CaskaydiaCove Nerd Font (Cascadia Code) y Outfit en `~/.local/share/fonts`; paquete `papirus-icon-theme`.
+13. **Cursor, ajustes y extensiones de GNOME** (`DO_APPEARANCE`): compila el cursor **Mocu** blanco (commit fijado) en `~/.local/share/icons` e instala `xcursorgen`, `librsvg2-tools` y `xmlstarlet`. Con sesión de GNOME aplica por `gsettings`: iconos Papirus, cursor Mocu-White-Right, fuente Outfit 12 y monoespaciada CaskaydiaCove Nerd Font 12. También instala y activa las extensiones Vitals, RunCat, AppIndicator y Dashcraft desde extensions.gnome.org (aparecen al reiniciar sesión). Ver [docs/despues-del-script.md](docs/despues-del-script.md#iconos-y-cursores).
 14. Activa `fstrim.timer`.
 
 Interruptores al inicio del script: `DO_SNAPSHOTS`, `DO_FIRMWARE`, `DO_CLI`, `DO_DEV`, `DO_GAMING`, `DO_BROWSERS`, `DO_APPS`, `DO_FONTS`, `DO_APPEARANCE`.
 
 ## Qué NO hace (a propósito)
 
-- No activa nada en el escritorio: sin extensiones ni ajustes. Los iconos y cursores solo se instalan; tú eliges cuál usar. Tampoco instala temas GTK ni de shell.
+- En el escritorio solo toca iconos, cursor, fuentes y las 4 extensiones indicadas. No instala temas GTK ni de shell.
 - No instala contenedores (Docker/Podman) ni servidores de base de datos.
 - No instala el driver propietario de NVIDIA. Ver [docs/nvidia.md](docs/nvidia.md).
 - No ejecuta `dnf autoremove`, que puede borrar drivers marcados como dependencia.
@@ -56,7 +56,7 @@ Interruptores al inicio del script: `DO_SNAPSHOTS`, `DO_FIRMWARE`, `DO_CLI`, `DO
 
 ## Limitaciones
 
-- Solo Fedora con `dnf` (Workstation, KDE, XFCE…). **No** sirve en Fedora Atomic (Silverblue, Kinoite, Bazzite), que usa `rpm-ostree`.
-- Probado en Fedora 45 con GPU Intel. Las ramas de AMD y los bloques de CLI, desarrollo, juegos, navegadores y apps no se han ejecutado todavía. El bloque de iconos y cursores se probó aislado (con un `HOME` temporal), no dentro de una ejecución completa.
+- Solo Fedora con `dnf` (Workstation). **No** sirve en Fedora Atomic (Silverblue, Kinoite, Bazzite), que usa `rpm-ostree`.
+- Probado en Fedora 45 con GPU Intel. Las ramas de AMD y los bloques de CLI, desarrollo, juegos, navegadores y apps no se han ejecutado todavía. El bloque de cursor y ajustes de GNOME no se ha ejecutado completo tras el último recorte.
 - ghostty y starship dependen de repos COPR de terceros (Helium usa el COPR de su propio proyecto): pueden no tener build para tu versión de Fedora.
 - Los nombres de paquetes pueden cambiar entre versiones de Fedora. El script no se detiene por un fallo puntual; revisa el log.

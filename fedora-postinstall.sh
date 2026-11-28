@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  Post-instalación Fedora — base estable + herramientas de uso diario
+#  Post-instalación Fedora Workstation (GNOME) — base estable + uso diario
 #  Base (DNF, RPM Fusion, Flathub, códecs, snapshots, firmware) y bloques
-#  opcionales (CLI, desarrollo, juegos, navegadores, apps, temas). Instala
-#  temas, iconos y cursores pero no activa ninguno ni toca extensiones.
-#  Funciona con cualquier escritorio (KDE, GNOME, XFCE...).
+#  opcionales (CLI, desarrollo, juegos, navegadores, apps, apariencia).
+#  Apariencia: Papirus + cursor Mocu y fuentes Outfit/Caskaydia (vía gsettings).
 #
 #  Ejecutar como usuario normal (NO con sudo):  bash fedora-postinstall.sh
 #  Pedirá tu contraseña de sudo una vez. Es seguro volver a ejecutarlo.
@@ -19,19 +18,14 @@ DO_DEV="yes"         # git, herramientas de compilación, nvm + Node LTS, gentle
 DO_GAMING="yes"      # Steam, GameMode y MangoHud (nativos)
 DO_BROWSERS="yes"    # Google Chrome (repo oficial) y Helium (COPR oficial imput/helium)
 DO_APPS="yes"        # LibreOffice (dnf) + IDEs y apps de usuario (Flatpak)
-DO_FONTS="yes"       # Fuentes (Nerd Fonts, Outfit) y paquete de iconos Papirus
-DO_APPEARANCE="yes"  # Iconos Gruvbox Plus y cursores (Bibata, Mocu); solo se instalan
+DO_FONTS="yes"       # Fuentes (CaskaydiaCove Nerd Font, Outfit) y iconos Papirus
+DO_APPEARANCE="yes"  # Cursor Mocu + ajustes de GNOME (iconos, cursor, fuentes, extensiones)
 
 NVM_VERSION="v0.41.0"   # https://github.com/nvm-sh/nvm/releases
 NERD_FONTS_VERSION="v3.5.1"   # https://github.com/ryanoasis/nerd-fonts/releases
 
-# Iconos y cursores: todo fijado a una versión exacta. Los repos van por commit
-# (git verifica el hash al descargar); los tarballs de Bibata, por sha256.
-BIBATA_VERSION="v2.0.7"   # https://github.com/ful1e5/Bibata_Cursor/releases
-BIBATA_CLASSIC_SHA256="7d3495864e5bbef02f5e77de760b2905903b63c71495a78ef6306d19a3b556d8"
-BIBATA_ICE_SHA256="a68cae60c4dc706350e194ebc91c5fe48bc7bc9d59e119555834a2a7ee5078ef"
+# Cursor Mocu: fijado a un commit exacto (git verifica el hash al descargar).
 MOCU_COMMIT="efdd71279b79bf1e2566c38becc5e7c4ab2d900c"            # sevmeyer/mocu-xcursor
-GRUVBOX_PLUS_COMMIT="d234e270f5b97c791f891f4f21f346c07d67d64f"    # SylEleuth/gruvbox-plus-icon-pack
 
 # ---------- Logs: carpeta logs/ junto al script, un par de archivos por ejecución ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -496,7 +490,7 @@ if [[ $DO_FONTS == yes ]]; then
   step "13. Fuentes e iconos"
   FONT_DIR="$HOME/.local/share/fonts"
   mkdir -p "$FONT_DIR/NerdFonts" "$FONT_DIR/Outfit"
-  for font in CascadiaCode CascadiaMono JetBrainsMono FiraCode; do
+  for font in CascadiaCode; do
     if [[ -z "$(ls -A "$FONT_DIR/NerdFonts/$font" 2>/dev/null)" ]]; then
       mkdir -p "$FONT_DIR/NerdFonts/$font"
       curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/${font}.tar.xz" \
@@ -510,73 +504,67 @@ if [[ $DO_FONTS == yes ]]; then
       || warn "No se pudo instalar la fuente Outfit."
   fi
   run fc-cache -f
-  # Solo se instala; elegir el tema de iconos es ajuste del escritorio
   $DNF papirus-icon-theme
 fi
 
 # ---------------------------------------------------------------------
 if [[ $DO_APPEARANCE == yes ]]; then
-  step "14. Iconos y cursores"
-  # Solo se instalan en tu home; elegir cuál usar es ajuste del escritorio
-  # (GNOME Retoques: Apariencia). xcursorgen, rsvg-convert y xmlstarlet compilan Mocu.
+  step "14. Cursor Mocu, ajustes y extensiones de GNOME"
+  # xcursorgen, rsvg-convert y xmlstarlet compilan Mocu.
   $DNF git xcursorgen librsvg2-tools xmlstarlet
 
   ICON_DIR="$HOME/.local/share/icons"
   mkdir -p "$ICON_DIR"
-  WORK="$(mktemp -d)"
 
-  # Descarga un commit exacto de un repo (git verifica el hash). Con rutas extra,
-  # baja solo esas carpetas (sparse-checkout) para no traer cientos de MB inútiles.
-  # Uso: git_pinned URL COMMIT DESTINO [carpeta...]
-  git_pinned() {
-    local url=$1 sha=$2 dir=$3; shift 3
-    rm -rf "$dir"; mkdir -p "$dir" || return 1
-    git -C "$dir" init -q \
-      && git -C "$dir" remote add origin "$url" \
-      && { (( $# == 0 )) || git -C "$dir" sparse-checkout set "$@"; } \
-      && git -C "$dir" fetch -q --depth 1 --filter=blob:none origin "$sha" \
-      && git -C "$dir" checkout -q FETCH_HEAD
-  }
-
-  # Cursores Bibata (tarball de la release, sha256 verificado)
-  for variant in Classic Ice; do
-    [[ -d $ICON_DIR/Bibata-Modern-$variant ]] && continue
-    case $variant in
-      Classic) expected=$BIBATA_CLASSIC_SHA256 ;;
-      Ice)     expected=$BIBATA_ICE_SHA256 ;;
-    esac
-    tarball="$WORK/Bibata-Modern-$variant.tar.xz"
-    if curl -fsSL -o "$tarball" \
-         "https://github.com/ful1e5/Bibata_Cursor/releases/download/${BIBATA_VERSION}/Bibata-Modern-$variant.tar.xz" \
-       && echo "$expected  $tarball" | sha256sum -c --quiet -; then
-      run tar -xJf "$tarball" -C "$ICON_DIR"
-    else
-      warn "No se pudo instalar el cursor Bibata-Modern-$variant (descarga o checksum)."
-    fi
-  done
-
-  # Cursores Mocu (se compilan con make.sh; "Right" = mano derecha)
-  if [[ ! -d $ICON_DIR/Mocu-Black-Right || ! -d $ICON_DIR/Mocu-White-Right ]]; then
-    if git_pinned https://github.com/sevmeyer/mocu-xcursor.git "$MOCU_COMMIT" "$WORK/mocu" \
-       && (cd "$WORK/mocu" && ./make.sh >/dev/null); then
-      run cp -a "$WORK/mocu/dist/Mocu-Black-Right" "$WORK/mocu/dist/Mocu-White-Right" "$ICON_DIR/"
+  # Cursor Mocu blanco, mano derecha (se compila con make.sh en un commit exacto)
+  if [[ ! -d $ICON_DIR/Mocu-White-Right ]]; then
+    WORK="$(mktemp -d)"
+    if git -C "$WORK" init -q \
+       && git -C "$WORK" remote add origin https://github.com/sevmeyer/mocu-xcursor.git \
+       && git -C "$WORK" fetch -q --depth 1 origin "$MOCU_COMMIT" \
+       && git -C "$WORK" checkout -q FETCH_HEAD \
+       && (cd "$WORK" && ./make.sh >/dev/null); then
+      run cp -a "$WORK/dist/Mocu-White-Right" "$ICON_DIR/"
     else
       warn "No se pudo instalar el cursor Mocu."
     fi
+    rm -rf "$WORK"
   fi
 
-  # Iconos Gruvbox Plus (Papirus ya viene del bloque 13)
-  if [[ ! -d $ICON_DIR/Gruvbox-Plus-Dark ]]; then
-    if git_pinned https://github.com/SylEleuth/gruvbox-plus-icon-pack.git "$GRUVBOX_PLUS_COMMIT" \
-         "$WORK/gruvbox-plus" Gruvbox-Plus-Dark; then
-      run cp -a "$WORK/gruvbox-plus/Gruvbox-Plus-Dark" "$ICON_DIR/"
-      run gtk-update-icon-cache -q -f "$ICON_DIR/Gruvbox-Plus-Dark"
-    else
-      warn "No se pudo instalar los iconos Gruvbox Plus."
+  # Ajustes de GNOME (solo con sesión gráfica; cambian solo estas claves)
+  if command -v gsettings &>/dev/null && gsettings list-schemas 2>/dev/null | grep -qx org.gnome.desktop.interface; then
+    run gsettings set org.gnome.desktop.interface icon-theme 'Papirus'
+    [[ -d $ICON_DIR/Mocu-White-Right ]] \
+      && run gsettings set org.gnome.desktop.interface cursor-theme 'Mocu-White-Right'
+    run gsettings set org.gnome.desktop.interface font-name 'Outfit 12'
+    run gsettings set org.gnome.desktop.interface monospace-font-name 'CaskaydiaCove Nerd Font 12'
+
+    # Extensiones de GNOME desde extensions.gnome.org (versión para tu GNOME Shell).
+    # Se activan en gsettings; aparecen al cerrar sesión y volver a entrar.
+    GS_VER="$(gnome-shell --version 2>/dev/null | grep -oE '[0-9]+' | head -1)"
+    if [[ -n $GS_VER ]] && command -v gnome-extensions &>/dev/null; then
+      for uuid in Vitals@CoreCoding.com runcat@kolesnikov.se \
+                  appindicatorsupport@rgcjonas.gmail.com dashcraft@izsakirobi.github.io; do
+        if [[ ! -d $HOME/.local/share/gnome-shell/extensions/$uuid && ! -d /usr/share/gnome-shell/extensions/$uuid ]]; then
+          zip="$(mktemp --suffix=.zip)"
+          if curl -fsSL -o "$zip" "https://extensions.gnome.org/download-extension/$uuid.shell-extension.zip?shell_version=$GS_VER"; then
+            run gnome-extensions install --force "$zip"
+          else
+            warn "No se pudo descargar la extensión $uuid para GNOME Shell $GS_VER."
+          fi
+          rm -f "$zip"
+        fi
+        enabled="$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null)"
+        if [[ $enabled != *"'$uuid'"* ]]; then
+          if [[ $enabled == "@as []" || $enabled == "[]" ]]; then new="['$uuid']"; else new="${enabled%]}, '$uuid']"; fi
+          run gsettings set org.gnome.shell enabled-extensions "$new"
+        fi
+      done
+      info "Extensiones de GNOME listas: cierra sesión y vuelve a entrar para verlas."
     fi
+  else
+    warn "Sin sesión de GNOME: omito los ajustes de iconos, cursor, fuentes y extensiones."
   fi
-
-  rm -rf "$WORK"
 fi
 
 # ---------------------------------------------------------------------
