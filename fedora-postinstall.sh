@@ -20,21 +20,18 @@ DO_GAMING="yes"      # Steam, GameMode y MangoHud (nativos)
 DO_BROWSERS="yes"    # Google Chrome (repo oficial) y Helium (COPR oficial imput/helium)
 DO_APPS="yes"        # LibreOffice (dnf) + IDEs y apps de usuario (Flatpak)
 DO_FONTS="yes"       # Fuentes (Nerd Fonts, Outfit) y paquete de iconos Papirus
-DO_THEMES="yes"      # Temas GTK/shell (Gruvbox, Orchis, Graphite), iconos Gruvbox Plus y cursores (Bibata, Mocu)
+DO_APPEARANCE="yes"  # Iconos Gruvbox Plus y cursores (Bibata, Mocu); solo se instalan
 
 NVM_VERSION="v0.41.0"   # https://github.com/nvm-sh/nvm/releases
 NERD_FONTS_VERSION="v3.5.1"   # https://github.com/ryanoasis/nerd-fonts/releases
 
-# Temas, iconos y cursores: todo fijado a una versión exacta. Los repos van por commit
+# Iconos y cursores: todo fijado a una versión exacta. Los repos van por commit
 # (git verifica el hash al descargar); los tarballs de Bibata, por sha256.
 BIBATA_VERSION="v2.0.7"   # https://github.com/ful1e5/Bibata_Cursor/releases
 BIBATA_CLASSIC_SHA256="7d3495864e5bbef02f5e77de760b2905903b63c71495a78ef6306d19a3b556d8"
 BIBATA_ICE_SHA256="a68cae60c4dc706350e194ebc91c5fe48bc7bc9d59e119555834a2a7ee5078ef"
 MOCU_COMMIT="efdd71279b79bf1e2566c38becc5e7c4ab2d900c"            # sevmeyer/mocu-xcursor
 GRUVBOX_PLUS_COMMIT="d234e270f5b97c791f891f4f21f346c07d67d64f"    # SylEleuth/gruvbox-plus-icon-pack
-GRUVBOX_GTK_COMMIT="578cd220b5ff6e86b078a6111d26bb20ec8c733f"     # Fausto-Korpsvart/Gruvbox-GTK-Theme
-ORCHIS_COMMIT="a4c48a425e63808345e824495964bd9c2f462e04"          # vinceliuice/Orchis-theme
-GRAPHITE_COMMIT="364173f47407164948788e4abb5e2eb46600f71a"        # vinceliuice/Graphite-gtk-theme
 
 # ---------- Logs: carpeta logs/ junto al script, un par de archivos por ejecución ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -213,6 +210,8 @@ if [[ $DO_CLI == yes ]]; then
   ghostty_set window-padding-x 10
   ghostty_set window-padding-y 8
   ghostty_set window-padding-balance true
+  ghostty_set window-width 110    # columnas: que quepa el logo de fastfetch (~94)
+  ghostty_set window-height 32    # filas
 
   # Starship: prompt minimalista de una línea al estilo catppuccin_mocha de oh-my-posh,
   # con los colores del tema activo de Ghostty (Gruvbox por defecto).
@@ -516,16 +515,14 @@ if [[ $DO_FONTS == yes ]]; then
 fi
 
 # ---------------------------------------------------------------------
-if [[ $DO_THEMES == yes ]]; then
-  step "14. Temas, iconos y cursores"
+if [[ $DO_APPEARANCE == yes ]]; then
+  step "14. Iconos y cursores"
   # Solo se instalan en tu home; elegir cuál usar es ajuste del escritorio
-  # (GNOME Retoques: Apariencia; el tema del shell requiere la extensión User Themes).
-  # sassc compila los temas; xcursorgen, rsvg-convert y xmlstarlet compilan Mocu.
-  $DNF git sassc xcursorgen librsvg2-tools xmlstarlet
+  # (GNOME Retoques: Apariencia). xcursorgen, rsvg-convert y xmlstarlet compilan Mocu.
+  $DNF git xcursorgen librsvg2-tools xmlstarlet
 
   ICON_DIR="$HOME/.local/share/icons"
-  THEME_DIR="$HOME/.themes"
-  mkdir -p "$ICON_DIR" "$THEME_DIR"
+  mkdir -p "$ICON_DIR"
   WORK="$(mktemp -d)"
 
   # Descarga un commit exacto de un repo (git verifica el hash). Con rutas extra,
@@ -576,33 +573,6 @@ if [[ $DO_THEMES == yes ]]; then
       run gtk-update-icon-cache -q -f "$ICON_DIR/Gruvbox-Plus-Dark"
     else
       warn "No se pudo instalar los iconos Gruvbox Plus."
-    fi
-  fi
-
-  # Temas GTK + shell (variante oscura)
-  if [[ ! -d $THEME_DIR/Gruvbox-Dark ]]; then
-    if git_pinned https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme.git "$GRUVBOX_GTK_COMMIT" \
-         "$WORK/gruvbox-gtk" themes; then
-      run bash -c 'cd "$1/themes" && ./install.sh -d "$2" -c dark' _ "$WORK/gruvbox-gtk" "$THEME_DIR"
-    else
-      warn "No se pudo instalar el tema Gruvbox GTK."
-    fi
-  fi
-  if [[ ! -d $THEME_DIR/Orchis-Dark ]]; then
-    if git_pinned https://github.com/vinceliuice/Orchis-theme.git "$ORCHIS_COMMIT" "$WORK/orchis"; then
-      run bash -c 'cd "$1" && ./install.sh -d "$2" -c dark -s standard' _ "$WORK/orchis" "$THEME_DIR"
-    else
-      warn "No se pudo instalar el tema Orchis."
-    fi
-  fi
-  if [[ ! -d $THEME_DIR/Graphite-Dark ]]; then
-    if git_pinned https://github.com/vinceliuice/Graphite-gtk-theme.git "$GRAPHITE_COMMIT" "$WORK/graphite"; then
-      run bash -c 'cd "$1" && ./install.sh -d "$2" -c dark -s standard' _ "$WORK/graphite" "$THEME_DIR"
-      # Su instalador deja además una app suelta (gnome-theme-switcher) que no se pidió
-      rm -f "$HOME/.local/bin/gnome-theme-switcher" \
-            "$HOME/.local/share/applications/org.gnome.GTK4ThemeSwitcher.desktop"
-    else
-      warn "No se pudo instalar el tema Graphite."
     fi
   fi
 
